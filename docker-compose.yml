@@ -1,0 +1,190 @@
+version: '3.7'
+services:
+  ## MySQL Docker Compose Config for user-service
+  mysql-user:
+    container_name: mysql-user
+    image: mysql:8.2.0
+    restart: unless-stopped
+    volumes:
+      - ./mysql_user_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: susmith
+      MYSQL_DATABASE: fasthopp_user_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user
+    ports:
+      - "3307:3306"
+
+  ## MySQL Docker Compose Config for task-service
+  mysql-task:
+    container_name: mysql-task
+    image: mysql:8.2.0
+    restart: unless-stopped
+    volumes:
+      - ./mysql_task_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: susmith
+      MYSQL_DATABASE: fasthopp_task_db
+      MYSQL_USER: task
+      MYSQL_PASSWORD: task
+    ports:
+      - "3308:3306"
+
+  ## MySQL Docker Compose Config for notification-service
+  mysql-notification:
+    container_name: mysql-notification
+    image: mysql:8.2.0
+    restart: unless-stopped
+    volumes:
+      - ./mysql_notification_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: susmith
+      MYSQL_DATABASE: fasthopp_notification_db
+      MYSQL_USER: notification
+      MYSQL_PASSWORD: notification
+    ports:
+      - "3309:3306"
+
+  ## Kafka Broker Docker Compose Config
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-kafka:latest
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKS_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  ## Zipkin
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+
+  ## Eureka Server
+  service-registry:
+    image: susmith508/service-registry:latest
+    container_name: service-registry
+    ports:
+      - "8761:8761"
+    depends_on:
+      - zipkin
+
+  ## Config Server
+  config-server:
+    image: susmith508/config-server:latest
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    depends_on:
+      - service-registry
+    restart: on-failure
+    links:
+      - service-registry
+    command: ["dockerize", "-wait", "tcp://config-server:8888", "-timeout", "60s"]
+
+  ## API Gateway
+  api-gateway:
+    image: susmith508/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "9292:9292"
+    expose:
+      - "9292"
+    depends_on:
+      - zipkin
+      - service-registry
+
+  ## User-Service Docker Compose Config
+  user-service:
+    image: susmith508/user-service:latest
+    container_name: user-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://user:user@mysql-user:3306/fasthopp_user_db
+    depends_on:
+      - mysql-user
+      - service-registry
+      - api-gateway
+      - zipkin
+      - broker
+      - config-server
+    links:
+      - mysql-user
+      - service-registry
+      - api-gateway
+      - zipkin
+      - broker
+      - config-server
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  ## Task-Service Docker Compose Config
+  task-service:
+    image: susmith508/task-service:latest
+    container_name: task-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://task:task@mysql-task:3306/fasthopp_task_db
+    depends_on:
+      - mysql-task
+      - service-registry
+      - api-gateway
+      - zipkin
+      - config-server
+    links:
+      - mysql-task
+      - service-registry
+      - api-gateway
+      - zipkin
+      - config-server
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8182/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  ## Notification-Service Docker Compose Config
+  notification-service:
+    image: susmith508/notification-service:latest
+    container_name: notification-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://notification:notification@mysql-notification:3306/fasthopp_notification_db
+    depends_on:
+      - mysql-notification
+      - service-registry
+      - api-gateway
+      - zipkin
+      - broker
+      - config-server
+    links:
+      - mysql-notification
+      - service-registry
+      - api-gateway
+      - zipkin
+      - broker
+      - config-server
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8282/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
