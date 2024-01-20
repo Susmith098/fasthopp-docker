@@ -4,7 +4,6 @@ services:
   mysql-user:
     container_name: mysql-user
     image: mysql:8.2.0
-    restart: unless-stopped
     volumes:
       - ./mysql_user_data:/var/lib/mysql
     environment:
@@ -17,9 +16,7 @@ services:
 
   ## MySQL Docker Compose Config for task-service
   mysql-task:
-    container_name: mysql-task
-    image: mysql:8.2.0
-    restart: unless-stopped
+    container_name: mysql-t
     volumes:
       - ./mysql_task_data:/var/lib/mysql
     environment:
@@ -34,7 +31,6 @@ services:
   mysql-notification:
     container_name: mysql-notification
     image: mysql:8.2.0
-    restart: unless-stopped
     volumes:
       - ./mysql_notification_data:/var/lib/mysql
     environment:
