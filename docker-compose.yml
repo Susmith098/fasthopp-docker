@@ -16,7 +16,8 @@ services:
 
   ## MySQL Docker Compose Config for task-service
   mysql-task:
-    container_name: mysql-t
+    container_name: mysql-task
+    image: mysql:8.2.0
     volumes:
       - ./mysql_task_data:/var/lib/mysql
     environment:
