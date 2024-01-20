@@ -130,12 +130,7 @@ services:
       - zipkin
       - broker
       - config-server
-    healthcheck:
-      test: "curl --fail --silent localhost:8082/actuator/health/readiness | grep UP || exit 1"
-      interval: 2s
-      timeout: 3s
-      retries: 5
-      start_period: 2s
+    
 
   ## Task-Service Docker Compose Config
   task-service:
@@ -155,12 +150,7 @@ services:
       - api-gateway
       - zipkin
       - config-server
-    healthcheck:
-      test: "curl --fail --silent localhost:8182/actuator/health/readiness | grep UP || exit 1"
-      interval: 2s
-      timeout: 3s
-      retries: 5
-      start_period: 2s
+    
 
   ## Notification-Service Docker Compose Config
   notification-service:
@@ -182,9 +172,4 @@ services:
       - zipkin
       - broker
       - config-server
-    healthcheck:
-      test: "curl --fail --silent localhost:8282/actuator/health/readiness | grep UP || exit 1"
-      interval: 2s
-      timeout: 3s
-      retries: 5
-      start_period: 2s
+    
